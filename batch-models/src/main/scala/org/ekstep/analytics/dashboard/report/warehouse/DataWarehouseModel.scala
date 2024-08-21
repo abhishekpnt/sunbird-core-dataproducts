@@ -6,6 +6,8 @@ import org.apache.spark.sql.functions._
 import org.ekstep.analytics.dashboard.DashboardUtil._
 import org.ekstep.analytics.dashboard.{AbsDashboardModel, DashboardConfig}
 import org.ekstep.analytics.framework.FrameworkContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 object DataWarehouseModel extends AbsDashboardModel {
@@ -80,6 +82,15 @@ object DataWarehouseModel extends AbsDashboardModel {
 
     val orgDwDf = cache.load("orgHierarchy")
       .withColumn("mdo_created_on", to_date(col("mdo_created_on")))
+
+    val startTime = LocalDateTime.now()
+    println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+    kafkaDispatch(withTimestamp(orgDwDf.coalesce(1),timestamp),conf.orgHierarchyTopic)
+
+    val endTime = LocalDateTime.now()
+    println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
     generateReport(orgDwDf.coalesce(1), s"${conf.orgHierarchyReportPath}/${today}-warehouse")
 
     truncateWarehouseTable(conf.dwOrgTable)

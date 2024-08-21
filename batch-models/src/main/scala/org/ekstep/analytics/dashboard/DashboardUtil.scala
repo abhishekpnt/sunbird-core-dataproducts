@@ -60,6 +60,17 @@ case class DashboardConfig (
                              fracCompetencyTopic: String, courseCompetencyTopic: String, expectedCompetencyTopic: String,
                              declaredCompetencyTopic: String, competencyGapTopic: String, userOrgTopic: String, orgTopic: String,
                              userAssessmentTopic: String, assessmentTopic: String, acbpEnrolmentTopic: String,
+                             //warehouse kafka topics
+                             userReportTopic:String,
+                             competencyHierarchyTopic:String,
+                             contentCompetencyMappingTopic:String,
+                             cbPlanTopic:String,
+                             blendedReportTopic:String,
+                             cbaTopic:String,
+                             courseReportTopic:String,
+                             courseResourceReportTopic:String,
+                             userEnrollmentTopic:String,
+                             orgHierarchyTopic:String,
                              // cassandra key spaces
                              cassandraUserKeyspace: String,
                              cassandraCourseKeyspace: String, cassandraHierarchyStoreKeyspace: String,
@@ -219,6 +230,17 @@ object DashboardConfigParser extends Serializable {
       userAssessmentTopic = getConfigSideTopic(config, "userAssessment"),
       assessmentTopic = getConfigSideTopic(config, "assessment"),
       acbpEnrolmentTopic = getConfigSideTopic(config, "acbpEnrolment"),
+
+      userReportTopic=getConfigSideTopic(config, "userReport"),
+      competencyHierarchyTopic=getConfigSideTopic(config, "competencyHierarchy"),
+      contentCompetencyMappingTopic=getConfigSideTopic(config, "contentCompetencyMapping"),
+      cbPlanTopic=getConfigSideTopic(config, "cbPlan"),
+      blendedReportTopic=getConfigSideTopic(config, "blendedReport"),
+      cbaTopic=getConfigSideTopic(config, "cba"),
+      courseReportTopic=getConfigSideTopic(config, "course"),
+      courseResourceReportTopic=getConfigSideTopic(config, "courseResource"),
+      userEnrollmentTopic=getConfigSideTopic(config, "userEnrollment"),
+      orgHierarchyTopic=getConfigSideTopic(config, "orgHierarchy"),
 
       //Newly added for the datawarehouse job
       appPostgresHost = getConfigModelParam(config, "appPostgresHost"),

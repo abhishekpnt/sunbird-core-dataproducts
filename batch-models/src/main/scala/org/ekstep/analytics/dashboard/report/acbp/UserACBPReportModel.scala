@@ -8,6 +8,8 @@ import org.ekstep.analytics.dashboard.DashboardUtil._
 import org.ekstep.analytics.dashboard.DataUtil._
 import org.ekstep.analytics.dashboard.{AbsDashboardModel, DashboardConfig, Redis}
 import org.ekstep.analytics.framework.FrameworkContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 object UserACBPReportModel extends AbsDashboardModel {
@@ -117,6 +119,15 @@ object UserACBPReportModel extends AbsDashboardModel {
     if (conf.reportSyncEnable) {
       syncReports(s"${conf.localReportDir}/${reportPath}", s"${conf.acbpMdoEnrolmentReportPath}/${today}")
     }
+
+    val startTime = LocalDateTime.now()
+    println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+    kafkaDispatch(withTimestamp(cbPlanWarehouseDF.coalesce(1),timestamp),conf.cbPlanTopic)
+
+    val endTime = LocalDateTime.now()
+    println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
     generateReport(cbPlanWarehouseDF.coalesce(1), s"${reportPath}-warehouse")
 
     // for user summary report

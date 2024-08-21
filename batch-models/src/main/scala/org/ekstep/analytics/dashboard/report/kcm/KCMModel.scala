@@ -8,6 +8,8 @@ import org.ekstep.analytics.dashboard.DashboardUtil._
 import org.ekstep.analytics.dashboard.DataUtil._
 import org.ekstep.analytics.dashboard.{AbsDashboardModel, DashboardConfig}
 import org.ekstep.analytics.framework.FrameworkContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 object KCMModel extends AbsDashboardModel {
 
@@ -39,6 +41,14 @@ object KCMModel extends AbsDashboardModel {
     val contentMappingDF = competencyContentMappingDF.withColumn("data_last_generated_on", currentDateTime)
       .select(col("courseID").alias("course_id"), col("competency_area_id"), col("competency_theme_id"), col("competency_sub_theme_id"), col("data_last_generated_on"))
     show(contentMappingDF, "competency content mapping df")
+
+    var startTime = LocalDateTime.now()
+    println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+    kafkaDispatch(withTimestamp(contentMappingDF,timestamp),conf.contentCompetencyMappingTopic)
+
+    var endTime = LocalDateTime.now()
+    println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
 
     generateReport(contentMappingDF.coalesce(1), s"${reportPathContentCompetencyMapping}-warehouse")
 
@@ -75,6 +85,14 @@ object KCMModel extends AbsDashboardModel {
         "competency_theme_id", "competency_theme", "competency_theme_description", "competency_sub_theme_id",
         "competency_sub_theme", "competency_sub_theme_description","data_last_generated_on")
     show(competencyDetailsDF, "Competency details dataframe")
+
+    startTime = LocalDateTime.now()
+    println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+    kafkaDispatch(withTimestamp(competencyDetailsDF.coalesce(1),timestamp),conf.competencyHierarchyTopic)
+
+    endTime = LocalDateTime.now()
+    println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
 
     generateReport(competencyDetailsDF.coalesce(1), s"${reportPathCompetencyHierarchy}-warehouse")
 

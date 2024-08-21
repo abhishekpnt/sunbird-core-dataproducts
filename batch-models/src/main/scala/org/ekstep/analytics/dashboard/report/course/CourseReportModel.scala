@@ -8,6 +8,8 @@ import org.ekstep.analytics.dashboard.DashboardUtil._
 import org.ekstep.analytics.dashboard.DataUtil._
 import org.ekstep.analytics.dashboard.{AbsDashboardModel, DashboardConfig, Redis}
 import org.ekstep.analytics.framework.FrameworkContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 object CourseReportModel extends AbsDashboardModel {
@@ -97,6 +99,15 @@ object CourseReportModel extends AbsDashboardModel {
         val distinctDF = notNullDF.dropDuplicates(notNullDF.columns).withColumn("data_last_generated_on", currentDateTime)
         // Show the result DataFrame
         distinctDF.show()
+
+        var startTime = LocalDateTime.now()
+        println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+        kafkaDispatch(withTimestamp(distinctDF,timestamp),conf.courseResourceReportTopic)
+
+        var endTime = LocalDateTime.now()
+        println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
         val reportPath = s"${conf.courseReportPath}/${today}"
         generateReport(distinctDF.coalesce(1), s"${reportPath}-resource-warehouse")
 
@@ -211,7 +222,16 @@ object CourseReportModel extends AbsDashboardModel {
                 col("contentLanguage").alias("language"),
                 col("data_last_generated_on")
               )
-            generateReport(df_warehouse.coalesce(1), s"${reportPath}-warehouse")
+
+         startTime = LocalDateTime.now()
+        println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+        kafkaDispatch(withTimestamp(df_warehouse.coalesce(1),timestamp),conf.courseReportTopic)
+
+         endTime = LocalDateTime.now()
+        println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+        generateReport(df_warehouse.coalesce(1), s"${reportPath}-warehouse")
 
         Redis.closeRedisConnect()
     }

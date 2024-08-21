@@ -7,6 +7,8 @@ import org.ekstep.analytics.dashboard.DashboardUtil._
 import org.ekstep.analytics.dashboard.DataUtil._
 import org.ekstep.analytics.dashboard.{AbsDashboardModel, DashboardConfig, Redis}
 import org.ekstep.analytics.framework.FrameworkContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 
 object UserEnrolmentModel extends AbsDashboardModel {
@@ -172,6 +174,15 @@ object UserEnrolmentModel extends AbsDashboardModel {
         col("live_cbp_plan_mandate"),
         col("data_last_generated_on")
       ).dropDuplicates("user_id","batch_id","content_id")
+
+    val startTime = LocalDateTime.now()
+    println(s"Starting to push DataFrame to Kafka at: ${startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
+    kafkaDispatch(withTimestamp(warehouseDF.coalesce(1),timestamp),conf.userEnrollmentTopic)
+
+    val endTime = LocalDateTime.now()
+    println(s"Finished pushing DataFrame to Kafka at: ${endTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+
     generateReport(warehouseDF.coalesce(1), s"${reportPath}-warehouse")
 
     Redis.closeRedisConnect()
