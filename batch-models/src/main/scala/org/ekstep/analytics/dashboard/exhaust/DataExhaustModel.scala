@@ -8,6 +8,7 @@ import org.ekstep.analytics.dashboard.DashboardUtil._
 import org.ekstep.analytics.dashboard.DataUtil.Schema
 import org.ekstep.analytics.dashboard.{AbsDashboardModel, DashboardConfig}
 import org.ekstep.analytics.framework._
+import org.ekstep.analytics.framework.util.JobLogger
 
 /**
  * Model for processing dashboard data
@@ -23,6 +24,7 @@ object DataExhaustModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+   try {
     val enrolmentDF = cassandraTableAsDataFrame(conf.cassandraCourseKeyspace, conf.cassandraUserEnrolmentsTable)
     cache.write(enrolmentDF, "enrolment")
     enrolmentDF.unpersist()
@@ -254,5 +256,13 @@ object DataExhaustModel extends AbsDashboardModel {
     cache.write(eventsEnrolmentWithDurationDF.coalesce(1), "eventEnrolmentDetails")
     eventsEnrolmentDF.unpersist()
 
+  }catch {
+     case e: Exception =>
+       // Log the error
+       println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+       // Exit with status 1
+       System.exit(1)
+   }
   }
 }
