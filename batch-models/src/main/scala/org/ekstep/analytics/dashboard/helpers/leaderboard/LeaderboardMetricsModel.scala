@@ -20,7 +20,7 @@ object LeaderboardMetricsModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+  try{
     // obtain and save user org data
     var (orgDF, userDF, userOrgDF) = getOrgUserDataFrames()
 
@@ -68,6 +68,14 @@ object LeaderboardMetricsModel extends AbsDashboardModel {
     csvWrite(leaderboardDF.coalesce(1), s"${conf.localReportDir}/user-leaderboard-data/")
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
 
   }
 

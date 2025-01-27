@@ -20,7 +20,7 @@ object CourseMetricsModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+try{
     // obtain and save user org data
     var (orgDF, userDF, userOrgDF) = getOrgUserDataFrames()
 
@@ -100,6 +100,14 @@ object CourseMetricsModel extends AbsDashboardModel {
     csvWrite(clickByCompleted.coalesce(1),s"${loc}clicks-by-completed.csv")
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 
   def bucketGroupBy(df: DataFrame, bucketCol: String, groupCol: String): DataFrame = {

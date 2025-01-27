@@ -26,6 +26,7 @@ object QuestionReportModel extends AbsDashboardModel {
   override def name() = "QuestionReportModel"
 
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+    try{
     val today = getDate()
     println("Querying mongo database to get report configurations")
     val surveyQuestionReportColumnsConfig = getReportConfig("surveyQuestionReport")
@@ -204,7 +205,14 @@ object QuestionReportModel extends AbsDashboardModel {
         outputStream.close()
       }
     }
+    }catch {
+      case e: Exception =>
+        // Log the error
+        println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
 
+        // Exit with status 1
+        System.exit(1)
+    }
   }
 
 }

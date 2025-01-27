@@ -19,6 +19,7 @@ object CourseBasedAssessmentModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+    try{
     val today = getDate()
 
     val (orgDF, userDF, userOrgDF) = getOrgUserDataFrames()
@@ -123,6 +124,10 @@ object CourseBasedAssessmentModel extends AbsDashboardModel {
       .withColumn("Tags", concat_ws(", ", col("additionalProperties.tag")))
 
     val fullReportDFOld = fullReportDFOldDraft
+      .withColumn("MDO_Name", col("userOrgName"))
+      .withColumn("Ministry", when(col("ministry_name").isNull, col("userOrgName")).otherwise(col("ministry_name")))
+      .withColumn("Department", when(col("ministry_name").isNotNull && col("dept_name").isNull, col("userOrgName")).otherwise(col("dept_name")))
+      .withColumn("Organization",when(col("ministry_name").isNotNull && col("dept_name").isNotNull, col("userOrgName")))
       .select(
         col("userID"),
         col("source_id").alias("assessment_id"),
@@ -134,11 +139,12 @@ object CourseBasedAssessmentModel extends AbsDashboardModel {
         col("professionalDetails.designation").alias("Designation"),
         col("personalDetails.primaryEmail").alias("E mail"),
         col("personalDetails.mobile").alias("Phone Number"),
+        col("MDO_Name"),
         col("professionalDetails.group").alias("Group"),
         col("Tags"),
-        col("ministry_name").alias("Ministry"),
-        col("dept_name").alias("Department"),
-        col("userOrgName").alias("Organisation"),
+        col("Ministry"),
+        col("Department"),
+        col("Organisation"),
         col("source_title").alias("assessment_name"),
         col("assessment_type"),
         col("courseOrgID").alias("assessment_content_provider"),
@@ -170,6 +176,7 @@ object CourseBasedAssessmentModel extends AbsDashboardModel {
         col("Designation"),
         col("E mail"),
         col("Phone Number"),
+        col("MDO_Name"),
         col("Group"),
         col("Tags"),
         col("status"),
@@ -227,6 +234,13 @@ object CourseBasedAssessmentModel extends AbsDashboardModel {
     warehouseCache.write(warehouseDF.coalesce(1), conf.dwAssessmentTable)
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
 
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }

@@ -16,7 +16,7 @@ object MonthlyRequestModel extends AbsDashboardModel {
   implicit val className: String = "org.ekstep.analytics.dashboard.report.monthly.requests.MonthlyRequestModel"
 
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+  try{
 //    val dateTimeFormatString = DateTimeFormatter.ofPattern(dateTimeFormat)
 //    val now = LocalDateTime.now()
 //    val fromDate = now.minusMonths(1).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).format(dateTimeFormatString)
@@ -84,5 +84,13 @@ object MonthlyRequestModel extends AbsDashboardModel {
         pipeline.sync()
       }
     }
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }

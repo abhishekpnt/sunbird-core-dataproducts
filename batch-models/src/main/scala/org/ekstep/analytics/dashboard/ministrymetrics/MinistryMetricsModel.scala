@@ -15,7 +15,7 @@ object MinistryMetricsModel extends AbsDashboardModel {
   override def name() = "MinistryMetricsModel"
 
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+  try{
     import spark.implicits._
 
     val org_hierarchyDF = cache.load("orgHierarchy")
@@ -113,5 +113,13 @@ object MinistryMetricsModel extends AbsDashboardModel {
     Redis.dispatchDataFrame[Double]("dashboard_rolled_up_enrolment_content_count",finalEnrolmentCountDF, "ministryID", "enrolmentCount")
     Redis.dispatchDataFrame[Int]("dashboard_rolled_up_user_count", finalUserCountDF, "ministryID", "userCount")
     Redis.dispatchDataFrame[Int]("dashboard_rolled_up_login_percent_last_24_hrs", finalUserLoggedInLast24HrCountDF, "ministryID", "userLogin24HrCount")
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }

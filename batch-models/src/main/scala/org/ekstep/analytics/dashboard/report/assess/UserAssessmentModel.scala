@@ -21,6 +21,7 @@ object UserAssessmentModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+    try{
     val today = getDate()
 
     // obtain user org data
@@ -86,7 +87,14 @@ object UserAssessmentModel extends AbsDashboardModel {
     generateAndSyncReports(df.filter(col("status").cast("int") === 1).select(columnsToKeepInReport.map(col): _*), "mdoid",reportPath, "StandaloneAssessmentReport")
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
 
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 
 }

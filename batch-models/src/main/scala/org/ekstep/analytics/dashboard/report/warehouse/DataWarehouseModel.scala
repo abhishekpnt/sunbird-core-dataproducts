@@ -20,7 +20,7 @@ object DataWarehouseModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+    try{
     val dwPostgresUrl = s"jdbc:postgresql://${conf.dwPostgresHost}/${conf.dwPostgresSchema}"
 
     val userDetails = warehouseCache.load(conf.dwUserTable)
@@ -73,7 +73,7 @@ object DataWarehouseModel extends AbsDashboardModel {
     saveDataframeToPostgresTable_With_Append(cbPlan, dwPostgresUrl, conf.dwCBPlanTable, conf.dwPostgresUsername, conf.dwPostgresCredential)
 
     val orgDwDf = cache.load("orgHierarchy")
-      .withColumn("mdo_created_on", to_date(col("mdo_created_on"))).cache()
+      .withColumn("mdo_created_on", to_date(col("mdo_created_on")).cast("string")).cache()
     warehouseCache.write(orgDwDf.coalesce(1), conf.dwOrgTable)
     truncateWarehouseTable(conf.dwOrgTable)
     saveDataframeToPostgresTable_With_Append(orgDwDf, dwPostgresUrl, conf.dwOrgTable, conf.dwPostgresUsername, conf.dwPostgresCredential)
@@ -106,8 +106,20 @@ object DataWarehouseModel extends AbsDashboardModel {
     warehouseCache.write(eventsDataDF, "event_details")
 
     val eventsEnrolmentDataDF = cache.load("eventEnrolmentDetails")
+    val karmaPointsData = cache.load("userKarmaPoints")
+      .select(col("userid").alias("user_id"),col("context_id").alias("event_id"),col("points"))
+      .groupBy(col("user_id"), col("event_id")).agg(sum(col("points")).alias("karma_points"))
+    val eventsEnrolmentDataDFWithKarmaPoints =  eventsEnrolmentDataDF.join(karmaPointsData, Seq("user_id", "event_id"), "left")
     truncateWarehouseTable("events_enrolment")
-    saveDataframeToPostgresTable_With_Append(eventsEnrolmentDataDF, dwPostgresUrl, "events_enrolment", conf.dwPostgresUsername, conf.dwPostgresCredential)
-    warehouseCache.write(eventsEnrolmentDataDF, "event_enrolment_details")
+    saveDataframeToPostgresTable_With_Append(eventsEnrolmentDataDFWithKarmaPoints, dwPostgresUrl, "events_enrolment", conf.dwPostgresUsername, conf.dwPostgresCredential)
+    warehouseCache.write(eventsEnrolmentDataDFWithKarmaPoints, "event_enrolment_details")
+    }catch {
+      case e: Exception =>
+        // Log the error
+        println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+        // Exit with status 1
+        System.exit(1)
+    }
   }
 }

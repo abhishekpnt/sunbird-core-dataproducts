@@ -15,6 +15,7 @@ object UserACBPReportModel extends AbsDashboardModel {
   override def name() = "UserACBPReportModel"
 
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+   try{
     val today = getDate()
 
     // get user and org data frames
@@ -87,15 +88,20 @@ object UserACBPReportModel extends AbsDashboardModel {
       .na.fill("")
 
     val enrolmentReportDF = enrolmentReportDataDF
+      .withColumn("MDO_Name", col("userOrgName"))
+      .withColumn("Ministry", when(col("ministry_name").isNull, col("userOrgName")).otherwise(col("ministry_name")))
+      .withColumn("Department", when(col("ministry_name").isNotNull && col("dept_name").isNull, col("userOrgName")).otherwise(col("dept_name")))
+      .withColumn("Organization",when(col("ministry_name").isNotNull && col("dept_name").isNotNull, col("userOrgName")))
       .select(
         col("fullName").alias("Name"),
         col("userPrimaryEmail").alias("Email"),
         col("userMobile").alias("Phone"),
-        col("ministry_name").alias("Ministry"),
-        col("dept_name").alias("Department"),
-        col("userOrgName").alias("Organization"),
+        col("MDO_Name"),
         col("group").alias("Group"),
         col("designation").alias("Designation"),
+        col("Ministry"),
+        col("Department"),
+        col("Organization"),
         col("courseName").alias("Name of CBP Allocated Course"),
         col("allocatedOn").alias("Allocated On"),
         col("currentProgress").alias("Current Progress"),
@@ -127,15 +133,20 @@ object UserACBPReportModel extends AbsDashboardModel {
       )
 
     val userSummaryReportDF = userSummaryDataDF
+      .withColumn("MDO_Name", col("userOrgName"))
+      .withColumn("Ministry", when(col("ministry_name").isNull, col("userOrgName")).otherwise(col("ministry_name")))
+      .withColumn("Department", when(col("ministry_name").isNotNull && col("dept_name").isNull, col("userOrgName")).otherwise(col("dept_name")))
+      .withColumn("Organization",when(col("ministry_name").isNotNull && col("dept_name").isNotNull, col("userOrgName")))
       .select(
         col("fullName").alias("Name"),
         col("userPrimaryEmail").alias("Email"),
         col("userMobile").alias("Phone"),
-        col("ministry_name").alias("Ministry"),
-        col("dept_name").alias("Department"),
-        col("userOrgName").alias("Organization"),
+        col("MDO_Name"),
         col("group").alias("Group"),
         col("designation").alias("Designation"),
+        col("Ministry"),
+        col("Department"),
+        col("Organization"),
         col("allocatedCount").alias("Number of CBP Courses Allocated"),
         col("completedCount").alias("Number of CBP Courses Completed"),
         col("completedBeforeDueDateCount").alias("Number of CBP Courses Completed within due date"),
@@ -155,6 +166,14 @@ object UserACBPReportModel extends AbsDashboardModel {
     warehouseCache.write(cbPlanWarehouseDF.coalesce(1), conf.dwCBPlanTable)
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }
 

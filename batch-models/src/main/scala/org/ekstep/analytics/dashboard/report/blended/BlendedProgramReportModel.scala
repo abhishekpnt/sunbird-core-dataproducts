@@ -21,6 +21,7 @@ object BlendedProgramReportModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+    try{
     val today = getDate()
 
     // get user and user org data
@@ -173,6 +174,10 @@ object BlendedProgramReportModel extends AbsDashboardModel {
       .distinct()
 
     val fullReportDF = fullDF
+      .withColumn("MDO_Name", col("userOrgName"))
+      .withColumn("Ministry", when(col("ministry_name").isNull, col("userOrgName")).otherwise(col("ministry_name")))
+      .withColumn("Department", when(col("ministry_name").isNotNull && col("dept_name").isNull, col("userOrgName")).otherwise(col("dept_name")))
+      .withColumn("Organization",when(col("ministry_name").isNotNull && col("dept_name").isNotNull, col("userOrgName")))
       .select(
         col("userID"),
         col("userOrgID"),
@@ -185,6 +190,7 @@ object BlendedProgramReportModel extends AbsDashboardModel {
         col("userStatus").alias("status"),
         col("userPrimaryEmail").alias("Email"),
         col("userMobile").alias("Phone_Number"),
+        col("MDO_Name"),
         col("maskedEmail"),
         col("maskedPhone"),
         col("userDesignation").alias("Designation"),
@@ -192,9 +198,9 @@ object BlendedProgramReportModel extends AbsDashboardModel {
         col("userGender").alias("Gender"),
         col("userCategory").alias("Category"),
         col("userTags").alias("Tag"),
-        col("ministry_name").alias("Ministry"),
-        col("dept_name").alias("Department"),
-        col("userOrgName").alias("Organization"),
+        col("Ministry"),
+        col("Department"),
+        col("Organization"),
 
         col("bpOrgName").alias("Provider_Name"),
         col("bpName").alias("Program_Name"),
@@ -234,7 +240,7 @@ object BlendedProgramReportModel extends AbsDashboardModel {
     // generateReport(fullReportDF, s"${reportPath}-full")
     val mdoReportDF = fullReportDF
       .select(
-        col("Name"),col("Email"),col("Phone_Number"),col("Designation"),col("Group"),col("Gender"),col("status"),
+        col("Name"),col("Email"),col("Phone_Number"),col("MDO_Name"),col("Designation"),col("Group"),col("Gender"),col("status"),
         col("Category"),col("Tag"),col("Ministry"),col("Department"),col("Organization"),col("Provider_Name"),col("Program_Name"),col("Batch_Name"),
         col("Batch_Location"),col("Batch_Start_Date"),col("Batch_End_Date"),col("Enrolled_On"),col("Component_Name"),col("Component_Type"),
         col("Component_Mode"),col("Status"),col("Component_Duration"),col("Component_Progress_Percentage"),col("Component_Completed_On"),
@@ -251,7 +257,7 @@ object BlendedProgramReportModel extends AbsDashboardModel {
     // cbp wise
     val cbpReportDF = fullReportDF
       .select(
-        col("bpOrgID").alias("mdoid"),col("Name"),col("maskedEmail").alias("Email"),col("maskedPhone").alias("Phone_Number"),col("Designation"),col("Group"),col("status"),
+        col("bpOrgID").alias("mdoid"),col("Name"),col("maskedEmail").alias("Email"),col("maskedPhone").alias("Phone_Number"),col("MDO_Name"),col("Designation"),col("Group"),col("status"),
         col("Gender"),col("Category"),col("Tag"),col("Ministry"), col("Department"),col("Organization"),col("Provider_Name"),col("Program_Name"),col("Batch_Name"),
         col("Batch_Location"),col("Batch_Start_Date"),col("Batch_End_Date"),col("Enrolled_On"),col("Component_Name"),col("Component_Type"),col("Component_Mode"),
         col("Status"),col("Component_Duration"),col("Component_Progress_Percentage"),col("Component_Completed_On"),col("Last_Accessed_On"),
@@ -290,6 +296,14 @@ object BlendedProgramReportModel extends AbsDashboardModel {
     warehouseCache.write(df_warehouse.coalesce(1), conf.dwBPEnrollmentsTable)
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 
   def bpBatchDataFrame()(implicit spark: SparkSession, conf: DashboardConfig): (DataFrame, DataFrame) = {
