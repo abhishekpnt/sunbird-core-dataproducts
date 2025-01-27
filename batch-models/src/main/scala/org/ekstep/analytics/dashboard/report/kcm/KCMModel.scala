@@ -14,7 +14,7 @@ object KCMModel extends AbsDashboardModel {
   implicit val className: String = "org.ekstep.analytics.dashboard.report.kcm.KCMModel"
   override def name() = "KCMModel"
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+  try{
     val today = getDate()
     val reportPathContentCompetencyMapping = s"${conf.kcmReportPath}/${today}/ContentCompetencyMapping"
     val reportPathCompetencyHierarchy = s"${conf.kcmReportPath}/${today}/CompetencyHierarchy"
@@ -93,5 +93,13 @@ object KCMModel extends AbsDashboardModel {
 //    if (conf.reportSyncEnable) {
 //      syncReports(s"${conf.localReportDir}/${reportPathContentCompetencyMapping}", reportPathContentCompetencyMapping)
 //    }
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }

@@ -15,7 +15,7 @@ object NpsUpgradeModel extends AbsDashboardModel {
 
   override def name() = "NpsModel"
   def processData(timestamp: Long) (implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
-
+  try{
     val usersSubmittedRejectedNPSDF = npsUpgradedTriggerC1DataFrame() // gives user data from druid who have received the popup in last 15 days
     val usersEnrolledCompletedCourseDF = npsUpgradedTriggerC2DataFrame() // gives user data from cassandra who have enrolled / completed atleast 1 course in last 15 days
     val usersRatedCouseDF = npsUpgradedTriggerC3DataFrame() // gives user data who have rated atleast one course in last 15 days
@@ -78,5 +78,13 @@ object NpsUpgradeModel extends AbsDashboardModel {
       .options(Map("keyspace" -> "sunbird_notifications" , "table" -> "notification_feed_history"))
       .mode("append")
       .save()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }

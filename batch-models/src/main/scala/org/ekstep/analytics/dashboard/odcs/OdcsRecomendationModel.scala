@@ -19,6 +19,7 @@ import org.ekstep.analytics.framework.FrameworkContext
 
     override def name() = "OdcsRecomendationModel"
     def processData(timestamp: Long) (implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+      try{
       val df = cassandraTableAsDataFrame(conf.cassandraHierarchyStoreKeyspace, conf.cassandraFrameworkHierarchyTable)
       val today = getDate()
       def readCSV(path: String): DataFrame = {spark.read.option("header", "true").csv(path)}
@@ -306,5 +307,13 @@ import org.ekstep.analytics.framework.FrameworkContext
 
       val odcsCourseRecomendationDF = finalDF.select(col("ordered_content_ids").alias("content_ids"), concat(split(col("org"), "_").getItem(0), lit("_"), upper(col("designation"))).alias("org_designation"))
       Redis.dispatchDataFrame[Long]("odcs_course_recomendation", odcsCourseRecomendationDF, "org_designation", "content_ids")
+    }catch {
+      case e: Exception =>
+        // Log the error
+        println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+        // Exit with status 1
+        System.exit(1)
+    }
     }
   }

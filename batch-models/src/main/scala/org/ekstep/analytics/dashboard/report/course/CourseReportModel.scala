@@ -15,6 +15,7 @@ object CourseReportModel extends AbsDashboardModel {
   override def name() = "CourseReportModel"
 
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+    try{
     val today = getDate()
 
     val orgDF = orgDataFrame().persist()
@@ -310,5 +311,13 @@ object CourseReportModel extends AbsDashboardModel {
     val df_warehouse = platformContentWarehouseDF.union(marketPlaceContentWarehouseDF)
     warehouseCache.write(df_warehouse.coalesce(1), conf.dwCourseTable)
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 }

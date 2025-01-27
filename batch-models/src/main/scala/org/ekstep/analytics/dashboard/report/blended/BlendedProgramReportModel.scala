@@ -21,6 +21,7 @@ object BlendedProgramReportModel extends AbsDashboardModel {
    * @param timestamp unique timestamp from the start of the processing
    */
   def processData(timestamp: Long)(implicit spark: SparkSession, sc: SparkContext, fc: FrameworkContext, conf: DashboardConfig): Unit = {
+    try{
     val today = getDate()
 
     // get user and user org data
@@ -295,6 +296,14 @@ object BlendedProgramReportModel extends AbsDashboardModel {
     warehouseCache.write(df_warehouse.coalesce(1), conf.dwBPEnrollmentsTable)
 
     Redis.closeRedisConnect()
+  }catch {
+    case e: Exception =>
+      // Log the error
+      println(s"Error occurred during DataExhaustModel processing: ${e.getMessage}", e)
+
+      // Exit with status 1
+      System.exit(1)
+  }
   }
 
   def bpBatchDataFrame()(implicit spark: SparkSession, conf: DashboardConfig): (DataFrame, DataFrame) = {
